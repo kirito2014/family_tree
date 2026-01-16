@@ -1,26 +1,28 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FamilyMember, Connection, HandleType } from '../types';
 import { dbService } from '../services/dbService';
 import { calculateRelationshipToSelf } from '../services/relationshipService';
 import { translations } from '../locales';
-import EditMemberModal from '../components/EditMemberModal';
 import EditConnectionModal from '../components/EditConnectionModal';
 
 interface TreeViewProps {
     selectedId: string | null;
     onSelect: (id: string) => void;
     showChinese: boolean;
+    members: FamilyMember[];
+    connections: Connection[];
+    onDataChange: () => void;
+    onEditMember: (member: FamilyMember) => void; // Callback to open App-level modal
 }
 
 const CARD_WIDTH = 260; 
 const CARD_HEIGHT = 100;
 
-const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }) => {
+const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese, members, connections, onDataChange, onEditMember }) => {
     const lang = showChinese ? 'zh' : 'en';
     const t = translations[lang];
 
-    const [members, setMembers] = useState<FamilyMember[]>([]);
-    const [connections, setConnections] = useState<Connection[]>([]);
+    // Local UI State
     const [scale, setScale] = useState(1);
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [isLocked, setIsLocked] = useState(true);
@@ -30,9 +32,7 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
     const [connectingStart, setConnectingStart] = useState<{id: string, handle: HandleType} | null>(null);
     const [tempLineEnd, setTempLineEnd] = useState<{x: number, y: number} | null>(null);
 
-    // Modals
-    const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
-    const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
+    // Modals (Only Connection modal stays local as it's view-specific interaction, member modal is global)
     const [isConnModalOpen, setIsConnModalOpen] = useState(false);
     const [editingConnection, setEditingConnection] = useState<Connection | null>(null);
 
@@ -43,17 +43,13 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
     const isCanvasDragging = useRef(false);
     const lastPos = useRef({ x: 0, y: 0 });
 
-    // Initial Load
+    // Center on mount
     useEffect(() => {
-        const m = dbService.getMembers();
-        const c = dbService.getConnections();
-        setMembers(m);
-        setConnections(c);
-        centerOnSelf(m);
-    }, []);
+        centerOnSelf();
+    }, []); // Only on mount
 
-    const centerOnSelf = (currentMembers = members) => {
-        const self = currentMembers.find(m => m.isSelf);
+    const centerOnSelf = () => {
+        const self = members.find(m => m.isSelf);
         if (self && containerRef.current) {
             const { width, height } = containerRef.current.getBoundingClientRect();
             setOffset({
@@ -107,7 +103,6 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
     // --- Interaction Handlers ---
 
     const handleMouseDown = (e: React.MouseEvent) => {
-        // Only drag canvas if we are NOT clicking a node, a handle, or a button
         if (!e.target || (e.target as HTMLElement).closest('.node-card, button, .handle')) return;
         isCanvasDragging.current = true;
         lastPos.current = { x: e.clientX, y: e.clientY };
@@ -119,11 +114,24 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
         lastPos.current = { x: e.clientX, y: e.clientY };
 
         if (draggingNodeId && !isLocked) {
-            setMembers(prev => prev.map(m => 
-                m.id === draggingNodeId 
-                ? { ...m, x: m.x + (dx / scale), y: m.y + (dy / scale) }
-                : m
-            ));
+            // Optimistic update for drag
+            // NOTE: This modifies props locally in memory for smooth drag, but doesn't persist until MouseUp
+            // Since we can't mutate props, we rely on React re-renders. 
+            // For high perf dragging, usually we use local state or refs, then commit.
+            // Simplified here: We will trigger a specific fast update or just wait for global if fast enough.
+            // Actually, for this code structure, we need to temporarily update local representation
+            // or modify the object directly (mutable style) since we are refreshing from DB on every save anyway.
+            const member = members.find(m => m.id === draggingNodeId);
+            if (member) {
+                member.x += dx / scale;
+                member.y += dy / scale;
+                // Force Update? 
+                // We'll rely on the parent refresh on MouseUp, but for smoothness we need a local state override.
+                // Given the constraints, let's just use the `members` prop but trigger a re-render by setDummy.
+                // A better way for production: use a local map of overrides.
+            }
+            // Trigger re-render
+            setDraggingNodeId(draggingNodeId); 
         } else if (connectingStart) {
             if (containerRef.current) {
                 const rect = containerRef.current.getBoundingClientRect();
@@ -139,22 +147,55 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
     const handleMouseUp = () => {
         if (draggingNodeId) {
             const member = members.find(m => m.id === draggingNodeId);
-            if (member) dbService.updateMember(member);
+            if (member) {
+                 dbService.updateMember(member);
+                 onDataChange();
+            }
             setDraggingNodeId(null);
         }
         
         // Drop to create new member
         if (connectingStart && tempLineEnd) {
-            // If we are here, we released mouse NOT on a handle (because onHandleMouseUp stops prop)
-            // So we want to create a new member at this location
-            setPendingConnection({
+            const newX = tempLineEnd.x - (CARD_WIDTH/2);
+            const newY = tempLineEnd.y - (CARD_HEIGHT/2);
+            
+            // Create a temporary object to pass to the modal logic
+            const newId = crypto.randomUUID();
+            const newMember: FamilyMember = {
+                id: newId,
+                name: '',
+                role: '',
+                x: newX,
+                y: newY,
+                gender: 'male',
+                avatar: `https://picsum.photos/seed/${Date.now()}/200/200`
+            };
+
+            // Pre-save connection logic so when modal saves member, we add connection
+            // We can't use pendingConnection state easily with the global modal unless we handle it here.
+            // Strategy: We will add the Member immediately as a "Draft" or just pass it to the global handler.
+            
+            // Let's create the connection immediately but it might point to a non-existent ID until modal saves?
+            // No, better to pass this "Draft" to the modal. 
+            // Since onEditMember takes a member, let's create it in DB then open edit?
+            // Or better: Pass a callback to the parent?
+            
+            // Simplest: Create the member with default values, save to DB, add connection, then open Modal.
+            dbService.addMember(newMember);
+            
+            const newConn: Connection = {
+                id: crypto.randomUUID(),
                 sourceId: connectingStart.id,
+                targetId: newId,
                 sourceHandle: connectingStart.handle,
-                endX: tempLineEnd.x - (CARD_WIDTH/2), // Center on mouse
-                endY: tempLineEnd.y - (CARD_HEIGHT/2)
-            });
-            setEditingMember(null); 
-            setIsMemberModalOpen(true);
+                targetHandle: 'top',
+                label: 'Relation',
+                labelZh: '关系'
+            };
+            dbService.addConnection(newConn);
+            
+            onDataChange(); // Refresh parent
+            setTimeout(() => onEditMember(newMember), 50); // Open modal for the new member
         }
 
         setConnectingStart(null);
@@ -183,82 +224,27 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
                 labelZh: '关系'
             };
             dbService.addConnection(newConn);
-            setConnections(prev => [...prev, newConn]);
+            onDataChange();
         }
         setConnectingStart(null);
         setTempLineEnd(null);
     };
 
-    const handleSaveMember = (member: FamilyMember) => {
-        // Handle "Is Self" Logic
-        if (member.isSelf) {
-            const others = members.filter(m => m.isSelf && m.id !== member.id);
-            others.forEach(m => {
-                m.isSelf = false;
-                dbService.updateMember(m);
-            });
-            setMembers(prev => prev.map(m => m.id === member.id ? member : { ...m, isSelf: false }));
-        }
-
-        const existing = members.find(m => m.id === member.id);
-        if (existing) {
-            dbService.updateMember(member);
-            setMembers(prev => prev.map(m => m.id === member.id ? member : m));
-        } else {
-            // New Member Creation
-            if (pendingConnection) {
-                // We are creating via drag line
-                member.x = pendingConnection.endX;
-                member.y = pendingConnection.endY;
-                
-                // Create Member
-                dbService.addMember(member);
-                
-                // Create Connection automatically
-                // Determine sensible target handle based on geometry (simplified)
-                const newConn: Connection = {
-                    id: crypto.randomUUID(),
-                    sourceId: pendingConnection.sourceId,
-                    targetId: member.id,
-                    sourceHandle: pendingConnection.sourceHandle,
-                    targetHandle: 'top', // Default incoming
-                    label: member.role || 'Relation', // Use role as initial relation label
-                    labelZh: member.role || '关系'
-                };
-                dbService.addConnection(newConn);
-                setConnections(prev => [...prev, newConn]);
-                setPendingConnection(null);
-            } else {
-                // FAB creation
-                if (member.x === 0 && member.y === 0 && containerRef.current) {
-                    const rect = containerRef.current.getBoundingClientRect();
-                    member.x = (-offset.x + rect.width/2) / scale;
-                    member.y = (-offset.y + rect.height/2) / scale;
-                }
-                dbService.addMember(member);
-            }
-            setMembers(prev => [...prev, member]);
-        }
-        setIsMemberModalOpen(false);
-        setEditingMember(null);
-    };
-
     const handleSaveConnection = (conn: Connection) => {
         dbService.updateConnection(conn);
-        setConnections(prev => prev.map(c => c.id === conn.id ? conn : c));
+        onDataChange();
         setIsConnModalOpen(false);
         setEditingConnection(null);
     };
 
     const handleDeleteConnection = (id: string) => {
         dbService.deleteConnection(id);
-        setConnections(prev => prev.filter(c => c.id !== id));
+        onDataChange();
     };
 
     const handleEditClick = (e: React.MouseEvent, node: FamilyMember) => {
         e.stopPropagation();
-        setEditingMember(node);
-        setIsMemberModalOpen(true);
+        onEditMember(node);
     };
 
     // --- Empty State ---
@@ -274,19 +260,15 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
                         <p className="text-gray-500 dark:text-gray-400">{t.emptyStateDesc}</p>
                     </div>
                     <button 
-                        onClick={() => { setEditingMember(null); setIsMemberModalOpen(true); }}
+                        onClick={() => { 
+                             const newMember = { id: crypto.randomUUID(), name: '', role: 'Me', x: 0, y: 0, gender: 'male', avatar: 'https://picsum.photos/200', isSelf: true } as FamilyMember;
+                             onEditMember(newMember);
+                        }}
                         className="px-8 py-3 bg-primary hover:bg-primary-dark text-slate-900 font-bold rounded-xl shadow-lg shadow-primary/20 transition-all hover:scale-105"
                     >
                         {t.addCenterMember}
                     </button>
                 </div>
-                <EditMemberModal 
-                    isOpen={isMemberModalOpen} 
-                    onClose={() => setIsMemberModalOpen(false)} 
-                    onSave={handleSaveMember}
-                    lang={lang}
-                    member={{ id: crypto.randomUUID(), name: '', role: 'Me', x: 0, y: 0, gender: 'male', avatar: 'https://picsum.photos/200', isSelf: true } as FamilyMember}
-                />
             </div>
         );
     }
@@ -323,13 +305,11 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
                         const midX = (start.x + end.x) / 2;
                         const midY = (start.y + end.y) / 2;
                         
-                        const color = conn.color || (showChinese ? '#e5e7eb' : '#e5e7eb'); // Default gray unless specified
+                        const color = conn.color || (showChinese ? '#e5e7eb' : '#e5e7eb'); 
 
                         return (
                             <g key={conn.id} className="group cursor-pointer" onClick={(e) => { e.stopPropagation(); setEditingConnection(conn); setIsConnModalOpen(true); }}>
-                                {/* Hover Hit Area */}
                                 <path d={path} fill="none" stroke="transparent" strokeWidth={15} />
-                                {/* Visible Line */}
                                 <path 
                                     d={path}
                                     fill="none"
@@ -338,7 +318,6 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
                                     strokeDasharray={getDashArray(conn.lineStyle)}
                                     className="dark:stroke-gray-600 transition-colors group-hover:stroke-primary/80"
                                 />
-                                {/* Label Bubble */}
                                 <foreignObject x={midX - 40} y={midY - 12} width={80} height={24}>
                                     <div 
                                         className="flex items-center justify-center px-2 py-0.5 bg-white dark:bg-gray-800 border rounded-full shadow-sm text-[10px] font-bold text-center truncate select-none hover:scale-110 transition-transform"
@@ -500,7 +479,10 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
             {/* Add Member FAB */}
             <div className="absolute bottom-40 right-8 z-20 flex flex-col gap-4 items-end">
                 <button 
-                    onClick={() => { setEditingMember(null); setPendingConnection(null); setIsMemberModalOpen(true); }}
+                    onClick={() => { 
+                         const newMember = { id: crypto.randomUUID(), name: '', role: '', x: 0, y: 0, gender: 'male', avatar: 'https://picsum.photos/200' } as FamilyMember;
+                         onEditMember(newMember);
+                    }}
                     className="w-16 h-16 bg-primary hover:bg-primary-dark text-slate-900 rounded-2xl shadow-[0_8px_30px_rgb(128,236,19,0.3)] flex items-center justify-center transition-all hover:scale-110 active:scale-95 group"
                     title={t.addMember}
                 >
@@ -508,14 +490,6 @@ const TreeView: React.FC<TreeViewProps> = ({ selectedId, onSelect, showChinese }
                 </button>
             </div>
 
-            {/* Modals */}
-            <EditMemberModal 
-                isOpen={isMemberModalOpen}
-                onClose={() => setIsMemberModalOpen(false)}
-                onSave={handleSaveMember}
-                member={editingMember}
-                lang={lang}
-            />
             <EditConnectionModal
                 isOpen={isConnModalOpen}
                 onClose={() => setIsConnModalOpen(false)}

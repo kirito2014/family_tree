@@ -30,30 +30,65 @@ const EditConnectionModal: React.FC<EditConnectionModalProps> = ({ isOpen, onClo
     const handles: HandleType[] = ['top', 'right', 'bottom', 'left'];
     const styles: LineStyle[] = ['solid', 'dashed', 'dotted'];
 
+    const PRESETS = [
+        { en: 'Father', zh: '父亲' },
+        { en: 'Mother', zh: '母亲' },
+        { en: 'Son', zh: '儿子' },
+        { en: 'Daughter', zh: '女儿' },
+        { en: 'Husband', zh: '丈夫' },
+        { en: 'Wife', zh: '妻子' },
+        { en: 'Brother', zh: '兄弟' },
+        { en: 'Sister', zh: '姐妹' },
+        { en: 'Ex-Husband', zh: '前夫' },
+        { en: 'Ex-Wife', zh: '前妻' },
+    ];
+
+    const applyPreset = (p: {en: string, zh: string}) => {
+        setFormData(prev => ({ ...prev, label: p.en, labelZh: p.zh }));
+    };
+
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 animate-[fadeIn_0.2s_ease-out]">
-                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 animate-[fadeIn_0.2s_ease-out]">
+                <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900/50">
                     <h3 className="font-bold text-lg text-slate-900 dark:text-white">Edit Connection</h3>
                 </div>
                 
-                <div className="p-6 space-y-4">
-                    {/* Labels */}
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-500 uppercase">{t.connectionLabel}</label>
-                        <input 
-                            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                            value={formData.label || ''}
-                            onChange={e => setFormData({...formData, label: e.target.value})}
-                        />
+                <div className="p-6 space-y-5">
+                    
+                    {/* Presets */}
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase mb-2 block">Quick Presets</label>
+                        <div className="flex flex-wrap gap-2">
+                            {PRESETS.map((p, i) => (
+                                <button 
+                                    key={i}
+                                    onClick={() => applyPreset(p)}
+                                    className="px-3 py-1.5 text-xs font-medium bg-gray-100 dark:bg-white/10 hover:bg-primary/20 hover:text-primary-dark dark:hover:text-primary rounded-lg transition-colors border border-transparent hover:border-primary/30"
+                                >
+                                    {lang === 'zh' ? p.zh : p.en}
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-gray-500 uppercase">{t.connectionLabelZh}</label>
-                        <input 
-                            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                            value={formData.labelZh || ''}
-                            onChange={e => setFormData({...formData, labelZh: e.target.value})}
-                        />
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">{t.connectionLabel}</label>
+                            <input 
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                                value={formData.label || ''}
+                                onChange={e => setFormData({...formData, label: e.target.value})}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">{t.connectionLabelZh}</label>
+                            <input 
+                                className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                                value={formData.labelZh || ''}
+                                onChange={e => setFormData({...formData, labelZh: e.target.value})}
+                            />
+                        </div>
                     </div>
 
                     {/* Handles */}
@@ -84,20 +119,20 @@ const EditConnectionModal: React.FC<EditConnectionModalProps> = ({ isOpen, onClo
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase">{t.lineColor}</label>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 p-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
                                 <input 
                                     type="color" 
-                                    className="h-10 w-10 p-0 border-0 rounded-lg cursor-pointer bg-transparent"
+                                    className="h-8 w-8 p-0 border-0 rounded cursor-pointer bg-transparent"
                                     value={formData.color || '#80ec13'}
                                     onChange={e => setFormData({...formData, color: e.target.value})}
                                 />
-                                <span className="text-xs text-gray-500">{formData.color}</span>
+                                <span className="text-xs text-gray-500 font-mono">{formData.color}</span>
                             </div>
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase">{t.lineStyle}</label>
                             <select 
-                                className="w-full px-2 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                                className="w-full px-2 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none"
                                 value={formData.lineStyle}
                                 onChange={e => setFormData({...formData, lineStyle: e.target.value as LineStyle})}
                             >
@@ -110,17 +145,17 @@ const EditConnectionModal: React.FC<EditConnectionModalProps> = ({ isOpen, onClo
                 <div className="p-6 pt-2 flex gap-3">
                      <button 
                         onClick={() => { onDelete(connection.id); onClose(); }} 
-                        className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+                        className="p-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
                         title={t.delete}
                     >
                         <span className="material-symbols-outlined">delete</span>
                     </button>
-                    <button onClick={onClose} className="flex-1 py-2.5 rounded-xl font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <button onClick={onClose} className="flex-1 py-3 rounded-xl font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                         {t.cancel}
                     </button>
                     <button 
                         onClick={() => onSave(formData as Connection)} 
-                        className="flex-1 py-2.5 bg-primary hover:bg-primary-dark text-slate-900 rounded-xl font-bold transition-colors"
+                        className="flex-1 py-3 bg-primary hover:bg-primary-dark text-slate-900 rounded-xl font-bold transition-colors shadow-lg shadow-primary/20"
                     >
                         {t.save}
                     </button>

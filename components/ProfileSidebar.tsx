@@ -7,9 +7,11 @@ interface ProfileSidebarProps {
     onClose: () => void;
     onSelectMember: (id: string) => void;
     showChinese: boolean;
+    onEdit: () => void;
+    onDelete: () => void;
 }
 
-const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ member, onClose, onSelectMember, showChinese }) => {
+const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ member, onClose, onSelectMember, showChinese, onEdit, onDelete }) => {
     if (!member) return null;
 
     const relatives = getImmediateFamily(member.id);
@@ -34,7 +36,10 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ member, onClose, onSele
             <div className="flex flex-col items-center mb-6">
                 <div className="w-24 h-24 rounded-full p-1 border-2 border-primary border-dashed mb-3 relative group">
                     <div className="w-full h-full rounded-full bg-cover bg-center" style={{backgroundImage: `url('${member.avatar}')`}}></div>
-                    <button className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full text-slate-900 shadow-sm hover:scale-110 transition-transform cursor-pointer">
+                    <button 
+                        onClick={onEdit}
+                        className="absolute bottom-0 right-0 p-1.5 bg-primary rounded-full text-slate-900 shadow-sm hover:scale-110 transition-transform cursor-pointer"
+                    >
                         <span className="material-symbols-outlined text-[16px]">edit</span>
                     </button>
                 </div>
@@ -42,6 +47,11 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ member, onClose, onSele
                     {showChinese && member.nameZh ? member.nameZh : member.name}
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">{member.role}</p>
+                {member.isSelf && (
+                     <span className="mt-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary/20 text-primary-dark dark:text-primary">
+                        Center Member (Me)
+                    </span>
+                )}
             </div>
 
             {/* Info Grid */}
@@ -60,7 +70,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ member, onClose, onSele
                 <div className="bg-white/50 dark:bg-white/5 p-4 rounded-xl border border-white/40 dark:border-white/5">
                     <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Biography</p>
                     <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                        {member.bio}
+                        {member.bio || "No biography added."}
                     </p>
                 </div>
 
@@ -70,6 +80,7 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ member, onClose, onSele
                         Immediate Family
                     </h4>
                     <div className="space-y-2">
+                        {relatives.length === 0 && <p className="text-xs text-gray-500">No connections found.</p>}
                         {relatives.map((rel) => (
                             <div 
                                 key={rel.member.id}
@@ -92,10 +103,16 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ member, onClose, onSele
 
             {/* Actions */}
             <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
-                <button className="flex-1 bg-slate-900 hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-lg">
+                <button 
+                    onClick={onEdit}
+                    className="flex-1 bg-slate-900 hover:bg-gray-800 text-white dark:bg-white dark:text-black dark:hover:bg-gray-200 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-lg"
+                >
                     Edit Profile
                 </button>
-                <button className="w-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-colors">
+                <button 
+                    onClick={onDelete}
+                    className="w-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 rounded-xl transition-colors"
+                >
                     <span className="material-symbols-outlined text-[20px]">delete</span>
                 </button>
             </div>

@@ -1,20 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { dbService } from '../services/dbService';
+import React from 'react';
 import { FamilyMember } from '../types';
-import { translations } from '../locales';
 
 interface DirectoryViewProps {
     onSelect: (id: string) => void;
     showChinese: boolean;
+    members: FamilyMember[];
 }
 
-const DirectoryView: React.FC<DirectoryViewProps> = ({ onSelect, showChinese }) => {
-    const [members, setMembers] = useState<FamilyMember[]>([]);
-    const t = translations[showChinese ? 'zh' : 'en'];
-
-    useEffect(() => {
-        setMembers(dbService.getMembers());
-    }, []);
+const DirectoryView: React.FC<DirectoryViewProps> = ({ onSelect, showChinese, members }) => {
 
     return (
         <div className="flex-1 overflow-y-auto pt-24 pb-40 px-6 md:px-10 bg-background-light dark:bg-background-dark">
