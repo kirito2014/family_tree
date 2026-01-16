@@ -1,4 +1,5 @@
 export type HandleType = 'top' | 'right' | 'bottom' | 'left';
+export type LineStyle = 'solid' | 'dashed' | 'dotted';
 
 export interface FamilyMember {
   id: string;
@@ -24,6 +25,8 @@ export interface Connection {
   targetHandle: HandleType;
   label: string;
   labelZh?: string;
+  color?: string; // Hex
+  lineStyle?: LineStyle; 
 }
 
 export type ViewMode = 'tree' | 'directory' | 'settings';

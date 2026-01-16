@@ -35,7 +35,13 @@ export const translations = {
     centerOnMe: "Reset to Me",
     lock: "Lock",
     unlock: "Unlock",
-    autoArrange: "Auto Arrange"
+    autoArrange: "Auto Arrange",
+    lineColor: "Line Color",
+    lineStyle: "Line Style",
+    solid: "Solid",
+    dashed: "Dashed",
+    dotted: "Dotted",
+    calculatedRelation: "Relation to You"
   },
   zh: {
     appTitle: "罗宾逊家族树",
@@ -73,6 +79,12 @@ export const translations = {
     centerOnMe: "回到中心",
     lock: "锁定",
     unlock: "解锁",
-    autoArrange: "自动排列"
+    autoArrange: "自动排列",
+    lineColor: "线条颜色",
+    lineStyle: "线条样式",
+    solid: "实线",
+    dashed: "虚线",
+    dotted: "点线",
+    calculatedRelation: "与我的关系"
   }
 };

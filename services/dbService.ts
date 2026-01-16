@@ -30,7 +30,7 @@ const INITIAL_MEMBERS: FamilyMember[] = [
 ];
 
 const INITIAL_CONNECTIONS: Connection[] = [
-  { id: 'c1', sourceId: '1', targetId: '2', sourceHandle: 'bottom', targetHandle: 'top', label: 'Son', labelZh: '儿子' }
+  { id: 'c1', sourceId: '1', targetId: '2', sourceHandle: 'bottom', targetHandle: 'top', label: 'Son', labelZh: '儿子', color: '#80ec13', lineStyle: 'solid' }
 ];
 
 const STORAGE_KEY_MEMBERS = 'rft_members';
@@ -131,6 +131,8 @@ export const dbService = {
       target_handle TEXT,
       label TEXT,
       label_zh TEXT,
+      color TEXT,
+      line_style TEXT,
       FOREIGN KEY(source_id) REFERENCES members(id),
       FOREIGN KEY(target_id) REFERENCES members(id)
     );\n\n`;
@@ -141,7 +143,7 @@ export const dbService = {
     sql += '\n';
 
     connections.forEach(c => {
-      sql += `INSERT INTO connections (id, source_id, target_id, source_handle, target_handle, label, label_zh) VALUES ('${c.id}', '${c.sourceId}', '${c.targetId}', '${c.sourceHandle}', '${c.targetHandle}', '${c.label}', '${c.labelZh||''}');\n`;
+      sql += `INSERT INTO connections (id, source_id, target_id, source_handle, target_handle, label, label_zh, color, line_style) VALUES ('${c.id}', '${c.sourceId}', '${c.targetId}', '${c.sourceHandle}', '${c.targetHandle}', '${c.label}', '${c.labelZh||''}', '${c.color||'#e5e7eb'}', '${c.lineStyle||'solid'}');\n`;
     });
 
     return sql;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Connection, HandleType } from '../types';
+import { Connection, HandleType, LineStyle } from '../types';
 import { translations } from '../locales';
 
 interface EditConnectionModalProps {
@@ -17,26 +17,32 @@ const EditConnectionModal: React.FC<EditConnectionModalProps> = ({ isOpen, onClo
 
     useEffect(() => {
         if (isOpen && connection) {
-            setFormData({ ...connection });
+            setFormData({ 
+                ...connection,
+                color: connection.color || '#80ec13',
+                lineStyle: connection.lineStyle || 'solid'
+            });
         }
     }, [isOpen, connection]);
 
     if (!isOpen || !connection) return null;
 
     const handles: HandleType[] = ['top', 'right', 'bottom', 'left'];
+    const styles: LineStyle[] = ['solid', 'dashed', 'dotted'];
 
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-700 animate-[fadeIn_0.2s_ease-out]">
                 <div className="px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
                     <h3 className="font-bold text-lg text-slate-900 dark:text-white">Edit Connection</h3>
                 </div>
                 
                 <div className="p-6 space-y-4">
+                    {/* Labels */}
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-gray-500 uppercase">{t.connectionLabel}</label>
                         <input 
-                            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
+                            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
                             value={formData.label || ''}
                             onChange={e => setFormData({...formData, label: e.target.value})}
                         />
@@ -44,17 +50,18 @@ const EditConnectionModal: React.FC<EditConnectionModalProps> = ({ isOpen, onClo
                     <div className="space-y-1">
                         <label className="text-xs font-bold text-gray-500 uppercase">{t.connectionLabelZh}</label>
                         <input 
-                            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg"
+                            className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
                             value={formData.labelZh || ''}
                             onChange={e => setFormData({...formData, labelZh: e.target.value})}
                         />
                     </div>
 
+                    {/* Handles */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase">{t.sourceHandle}</label>
                             <select 
-                                className="w-full px-2 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+                                className="w-full px-2 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none"
                                 value={formData.sourceHandle}
                                 onChange={e => setFormData({...formData, sourceHandle: e.target.value as HandleType})}
                             >
@@ -64,11 +71,37 @@ const EditConnectionModal: React.FC<EditConnectionModalProps> = ({ isOpen, onClo
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-gray-500 uppercase">{t.targetHandle}</label>
                             <select 
-                                className="w-full px-2 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+                                className="w-full px-2 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none"
                                 value={formData.targetHandle}
                                 onChange={e => setFormData({...formData, targetHandle: e.target.value as HandleType})}
                             >
                                 {handles.map(h => <option key={h} value={h}>{t[h]}</option>)}
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Styling */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">{t.lineColor}</label>
+                            <div className="flex items-center gap-2">
+                                <input 
+                                    type="color" 
+                                    className="h-10 w-10 p-0 border-0 rounded-lg cursor-pointer bg-transparent"
+                                    value={formData.color || '#80ec13'}
+                                    onChange={e => setFormData({...formData, color: e.target.value})}
+                                />
+                                <span className="text-xs text-gray-500">{formData.color}</span>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">{t.lineStyle}</label>
+                            <select 
+                                className="w-full px-2 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+                                value={formData.lineStyle}
+                                onChange={e => setFormData({...formData, lineStyle: e.target.value as LineStyle})}
+                            >
+                                {styles.map(s => <option key={s} value={s}>{t[s]}</option>)}
                             </select>
                         </div>
                     </div>
@@ -78,6 +111,7 @@ const EditConnectionModal: React.FC<EditConnectionModalProps> = ({ isOpen, onClo
                      <button 
                         onClick={() => { onDelete(connection.id); onClose(); }} 
                         className="p-2.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-colors"
+                        title={t.delete}
                     >
                         <span className="material-symbols-outlined">delete</span>
                     </button>
