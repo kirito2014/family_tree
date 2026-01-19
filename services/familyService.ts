@@ -1,13 +1,8 @@
-import { dbService } from './dbService';
+import { FamilyMember, Connection } from '../types';
 
-export const getMember = (id: string) => {
-    return dbService.getMembers().find(m => m.id === id);
-};
-
-// Simplified relative fetcher for the sidebar
-export const getImmediateFamily = (memberId: string) => {
-    const connections = dbService.getConnections();
-    const members = dbService.getMembers();
+// Refactored to accept data as arguments, making it synchronous and pure
+// This avoids needing to make the UI components async just for simple filtering
+export const getImmediateFamily = (memberId: string, members: FamilyMember[], connections: Connection[]) => {
     const family: any[] = [];
 
     connections.forEach(conn => {

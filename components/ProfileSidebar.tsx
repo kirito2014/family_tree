@@ -1,5 +1,5 @@
 import React from 'react';
-import { FamilyMember } from '../types';
+import { FamilyMember, Connection } from '../types';
 import { getImmediateFamily } from '../services/familyService';
 
 interface ProfileSidebarProps {
@@ -9,12 +9,24 @@ interface ProfileSidebarProps {
     showChinese: boolean;
     onEdit: () => void;
     onDelete: () => void;
+    members: FamilyMember[];
+    connections: Connection[];
 }
 
-const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ member, onClose, onSelectMember, showChinese, onEdit, onDelete }) => {
+const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ 
+    member, 
+    onClose, 
+    onSelectMember, 
+    showChinese, 
+    onEdit, 
+    onDelete,
+    members,
+    connections
+}) => {
     if (!member) return null;
 
-    const relatives = getImmediateFamily(member.id);
+    // Now uses passed props instead of synchronous DB access
+    const relatives = getImmediateFamily(member.id, members, connections);
 
     return (
         <aside className="absolute top-24 right-6 bottom-32 w-80 md:w-96 bg-white/80 dark:bg-black/80 backdrop-blur-xl border border-white/40 dark:border-white/10 rounded-2xl shadow-2xl p-6 z-30 flex flex-col animate-[slideIn_0.3s_ease-out]">

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import { ViewMode, FamilyMember, Connection } from './types';
 import { dbService } from './services/dbService';
@@ -18,23 +20,26 @@ const App: React.FC = () => {
     // Global Data State
     const [members, setMembers] = useState<FamilyMember[]>([]);
     const [connections, setConnections] = useState<Connection[]>([]);
+    const [loading, setLoading] = useState(true);
 
     // Modal State
     const [isMemberModalOpen, setIsMemberModalOpen] = useState(false);
     const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
     
-    // Connection Modal State (Mostly triggered from TreeView, but kept close to root usually, 
-    // though TreeView handles its own connection drag interactions, so connection modal is primarily driven by TreeView.
-    // However, to keep consistency, we can allow App to refresh data).
-
     // Load Data on Mount
     useEffect(() => {
         refreshData();
     }, []);
 
-    const refreshData = () => {
-        setMembers(dbService.getMembers());
-        setConnections(dbService.getConnections());
+    const refreshData = async () => {
+        // Parallel fetch for speed
+        const [fetchedMembers, fetchedConnections] = await Promise.all([
+            dbService.getMembers(),
+            dbService.getConnections()
+        ]);
+        setMembers(fetchedMembers);
+        setConnections(fetchedConnections);
+        setLoading(false);
     };
 
     const handleSelectMember = (id: string) => {
@@ -43,33 +48,32 @@ const App: React.FC = () => {
 
     // --- CRUD Operations ---
 
-    const handleSaveMember = (member: FamilyMember) => {
+    const handleSaveMember = async (member: FamilyMember) => {
+        // Optimistic UI Update (optional, but good for UX)
+        // For now, we rely on refreshData to keep it simple and consistent with DB
+        
         if (member.isSelf) {
-            // Unset other selfs
-            const others = members.filter(m => m.isSelf && m.id !== member.id);
-            others.forEach(m => {
-                m.isSelf = false;
-                dbService.updateMember(m);
-            });
+            // DB handles the logic of unsetting others via server action, 
+            // but we can update local state to reflect it if we wanted to avoid a refresh.
         }
 
         const existing = members.find(m => m.id === member.id);
         if (existing) {
-            dbService.updateMember(member);
+            await dbService.updateMember(member);
         } else {
-            dbService.addMember(member);
+            await dbService.addMember(member);
         }
         
         setIsMemberModalOpen(false);
         setEditingMember(null);
-        refreshData();
+        await refreshData();
     };
 
-    const handleDeleteMember = (id: string) => {
+    const handleDeleteMember = async (id: string) => {
         if (window.confirm("Are you sure you want to delete this member? This will also remove connected lines.")) {
-            dbService.deleteMember(id);
+            await dbService.deleteMember(id);
             if (selectedMemberId === id) setSelectedMemberId(null);
-            refreshData();
+            await refreshData();
         }
     };
 
@@ -77,6 +81,21 @@ const App: React.FC = () => {
         setEditingMember(member);
         setIsMemberModalOpen(true);
     };
+
+    const handleDataChange = async () => {
+        // This is triggered by TreeView drag/drop and connection changes
+        // We re-fetch to ensure sync with DB
+        // For performance in a real app, we might use React Query or SWR
+        await refreshData();
+    };
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center bg-background-light dark:bg-background-dark text-primary">
+                <span className="material-symbols-outlined text-4xl animate-spin">autorenew</span>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-screen w-full relative">
@@ -95,7 +114,7 @@ const App: React.FC = () => {
                         showChinese={showChineseNames}
                         members={members}
                         connections={connections}
-                        onDataChange={refreshData}
+                        onDataChange={handleDataChange}
                         onEditMember={handleEditMemberRequest}
                     />
                 )}
@@ -125,6 +144,9 @@ const App: React.FC = () => {
                         if (m) handleEditMemberRequest(m);
                     }}
                     onDelete={() => handleDeleteMember(selectedMemberId)}
+                    // Pass full data sets to sidebar for relationship calculation
+                    members={members}
+                    connections={connections}
                 />
             )}
 

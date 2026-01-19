@@ -13,8 +13,8 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ currentView, setView, showChinese, setShowChinese }) => {
     const t = translations[showChinese ? 'zh' : 'en'];
 
-    const handleExport = () => {
-        const sql = dbService.exportAsSql();
+    const handleExport = async () => {
+        const sql = await dbService.exportAsSql();
         const blob = new Blob([sql], { type: 'text/sql' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');

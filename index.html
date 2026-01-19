@@ -1,94 +1,10 @@
-<!DOCTYPE html>
-<html lang="en" class="light">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Robinson Family Tree</title>
-    
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <script>
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            colors: {
-              primary: {
-                DEFAULT: "#80ec13",
-                dark: "#6bc50e",
-                light: "#a3f055"
-              },
-              background: {
-                light: "#FAFAF5",
-                dark: "#192210"
-              },
-              card: {
-                light: "rgba(255, 255, 255, 0.7)",
-                dark: "rgba(30, 30, 30, 0.6)"
-              }
-            },
-            fontFamily: {
-              display: ["Inter", "sans-serif"]
-            },
-            backgroundImage: {
-              'grid-pattern': "radial-gradient(#d4d4d8 1px, transparent 1px)",
-              'grid-pattern-dark': "radial-gradient(#3f3f46 1px, transparent 1px)",
-            }
-          }
-        }
-      }
-    </script>
-    <style>
-      body {
-        font-family: 'Inter', sans-serif;
-      }
-      .bg-grid {
-        background-size: 24px 24px;
-      }
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      /* Custom Range Slider */
-      input[type=range]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        height: 20px;
-        width: 20px;
-        border-radius: 50%;
-        background: #ffffff;
-        border: 4px solid #80ec13;
-        cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-top: -8px;
-      }
-      input[type=range]::-webkit-slider-runnable-track {
-        width: 100%;
-        height: 4px;
-        cursor: pointer;
-        background: transparent;
-        border-radius: 9999px;
-      }
-    </style>
-  <script type="importmap">
+<script type="importmap">
 {
   "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3"
+    "react": "https://esm.sh/react@^19.2.3",
+    "next": "https://esm.sh/next@^16.1.3",
+    "@prisma/client": "https://esm.sh/@prisma/client@^7.2.0"
   }
 }
 </script>
-</head>
-  <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white h-screen overflow-hidden selection:bg-primary selection:text-black">
-    <div id="root"></div>
-  </body>
-</html>

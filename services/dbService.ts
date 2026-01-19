@@ -1,149 +1,106 @@
 import { FamilyMember, Connection } from '../types';
+import { 
+  getMembersAction, 
+  saveMemberAction, 
+  deleteMemberAction, 
+  getConnectionsAction, 
+  saveConnectionAction, 
+  deleteConnectionAction 
+} from '../app/actions';
 
-// Initial Mock Data
-const INITIAL_MEMBERS: FamilyMember[] = [
-  {
-    id: '1',
-    name: 'Arthur Robinson',
-    nameZh: '亚瑟·罗宾逊',
-    role: 'Patriarch',
-    birthDate: '1940',
-    location: 'London, UK',
-    avatar: 'https://picsum.photos/id/1025/200/200',
-    gender: 'male',
-    x: 500,
-    y: 150
-  },
-  {
-    id: '2',
-    name: 'John Robinson',
-    nameZh: '约翰·罗宾逊',
-    role: 'Father',
-    birthDate: '1970',
-    location: 'New York, USA',
-    avatar: 'https://picsum.photos/id/1005/200/200',
-    gender: 'male',
-    isSelf: true,
-    x: 500,
-    y: 450
-  }
-];
-
-const INITIAL_CONNECTIONS: Connection[] = [
-  { id: 'c1', sourceId: '1', targetId: '2', sourceHandle: 'bottom', targetHandle: 'top', label: 'Son', labelZh: '儿子', color: '#80ec13', lineStyle: 'solid' }
-];
-
-const STORAGE_KEY_MEMBERS = 'rft_members';
-const STORAGE_KEY_CONNECTIONS = 'rft_connections';
+// This service now acts as a bridge to Server Actions
+// Note: All methods are now ASYNC
 
 export const dbService = {
-  getMembers: (): FamilyMember[] => {
-    const stored = localStorage.getItem(STORAGE_KEY_MEMBERS);
-    return stored ? JSON.parse(stored) : INITIAL_MEMBERS;
-  },
-
-  saveMembers: (members: FamilyMember[]) => {
-    localStorage.setItem(STORAGE_KEY_MEMBERS, JSON.stringify(members));
-  },
-
-  getConnections: (): Connection[] => {
-    const stored = localStorage.getItem(STORAGE_KEY_CONNECTIONS);
-    return stored ? JSON.parse(stored) : INITIAL_CONNECTIONS;
-  },
-
-  saveConnections: (connections: Connection[]) => {
-    localStorage.setItem(STORAGE_KEY_CONNECTIONS, JSON.stringify(connections));
-  },
-
-  addMember: (member: FamilyMember) => {
-    const members = dbService.getMembers();
-    members.push(member);
-    dbService.saveMembers(members);
-  },
-
-  updateMember: (member: FamilyMember) => {
-    const members = dbService.getMembers();
-    const idx = members.findIndex(m => m.id === member.id);
-    if (idx !== -1) {
-      members[idx] = member;
-      dbService.saveMembers(members);
+  getMembers: async (): Promise<FamilyMember[]> => {
+    try {
+      return await getMembersAction();
+    } catch (e) {
+      console.error("Failed to fetch members", e);
+      return [];
     }
   },
 
-  deleteMember: (id: string) => {
-    let members = dbService.getMembers();
-    members = members.filter(m => m.id !== id);
-    dbService.saveMembers(members);
-    
-    // Cascade delete connections
-    let connections = dbService.getConnections();
-    connections = connections.filter(c => c.sourceId !== id && c.targetId !== id);
-    dbService.saveConnections(connections);
+  addMember: async (member: FamilyMember) => {
+    await saveMemberAction(member);
   },
 
-  addConnection: (conn: Connection) => {
-    const connections = dbService.getConnections();
-    connections.push(conn);
-    dbService.saveConnections(connections);
+  updateMember: async (member: FamilyMember) => {
+    await saveMemberAction(member);
   },
 
-  updateConnection: (conn: Connection) => {
-    const connections = dbService.getConnections();
-    const idx = connections.findIndex(c => c.id === conn.id);
-    if (idx !== -1) {
-      connections[idx] = conn;
-      dbService.saveConnections(connections);
+  deleteMember: async (id: string) => {
+    await deleteMemberAction(id);
+  },
+
+  getConnections: async (): Promise<Connection[]> => {
+    try {
+      return await getConnectionsAction();
+    } catch (e) {
+      console.error("Failed to fetch connections", e);
+      return [];
     }
   },
 
-  deleteConnection: (id: string) => {
-    let connections = dbService.getConnections();
-    connections = connections.filter(c => c.id !== id);
-    dbService.saveConnections(connections);
+  addConnection: async (conn: Connection) => {
+    await saveConnectionAction(conn);
   },
 
-  // Export as SQL compatible with SQLite/Postgres
-  exportAsSql: () => {
-    const members = dbService.getMembers();
-    const connections = dbService.getConnections();
+  updateConnection: async (conn: Connection) => {
+    await saveConnectionAction(conn);
+  },
+
+  deleteConnection: async (id: string) => {
+    await deleteConnectionAction(id);
+  },
+
+  // Export Logic needs to be client-side generated from fetched data, 
+  // or moved to a server action that returns the string.
+  // For simplicity, we assume the caller has the data or we fetch it here.
+  exportAsSql: async () => {
+    const members = await getMembersAction();
+    const connections = await getConnectionsAction();
     
     let sql = `-- Robinson Family Tree Export\n-- Generated on ${new Date().toISOString()}\n\n`;
     
-    sql += `CREATE TABLE IF NOT EXISTS members (
-      id TEXT PRIMARY KEY,
-      name TEXT,
-      name_zh TEXT,
-      role TEXT,
-      birth_date TEXT,
-      location TEXT,
-      avatar TEXT,
-      gender TEXT,
-      is_self BOOLEAN,
-      x INTEGER,
-      y INTEGER
+    sql += `CREATE TABLE IF NOT EXISTS "Member" (
+      "id" TEXT PRIMARY KEY,
+      "name" TEXT,
+      "nameZh" TEXT,
+      "role" TEXT,
+      "birthDate" TEXT,
+      "location" TEXT,
+      "avatar" TEXT,
+      "bio" TEXT,
+      "gender" TEXT,
+      "isSelf" BOOLEAN,
+      "x" REAL,
+      "y" REAL,
+      "extra" TEXT
     );\n\n`;
 
-    sql += `CREATE TABLE IF NOT EXISTS connections (
-      id TEXT PRIMARY KEY,
-      source_id TEXT,
-      target_id TEXT,
-      source_handle TEXT,
-      target_handle TEXT,
-      label TEXT,
-      label_zh TEXT,
-      color TEXT,
-      line_style TEXT,
-      FOREIGN KEY(source_id) REFERENCES members(id),
-      FOREIGN KEY(target_id) REFERENCES members(id)
+    sql += `CREATE TABLE IF NOT EXISTS "Connection" (
+      "id" TEXT PRIMARY KEY,
+      "sourceId" TEXT,
+      "targetId" TEXT,
+      "sourceHandle" TEXT,
+      "targetHandle" TEXT,
+      "label" TEXT,
+      "labelZh" TEXT,
+      "color" TEXT,
+      "lineStyle" TEXT,
+      "extra" TEXT,
+      FOREIGN KEY("sourceId") REFERENCES "Member"("id"),
+      FOREIGN KEY("targetId") REFERENCES "Member"("id")
     );\n\n`;
 
     members.forEach(m => {
-      sql += `INSERT INTO members (id, name, name_zh, role, birth_date, location, avatar, gender, is_self, x, y) VALUES ('${m.id}', '${m.name.replace(/'/g, "''")}', '${(m.nameZh||'').replace(/'/g, "''")}', '${m.role}', '${m.birthDate||''}', '${m.location||''}', '${m.avatar}', '${m.gender}', ${m.isSelf ? 1 : 0}, ${Math.round(m.x)}, ${Math.round(m.y)});\n`;
+      sql += `INSERT INTO "Member" ("id", "name", "nameZh", "role", "birthDate", "location", "avatar", "gender", "isSelf", "x", "y") VALUES ('${m.id}', '${m.name.replace(/'/g, "''")}', '${(m.nameZh||'').replace(/'/g, "''")}', '${m.role}', '${m.birthDate||''}', '${m.location||''}', '${m.avatar}', '${m.gender}', ${m.isSelf ? 1 : 0}, ${Math.round(m.x)}, ${Math.round(m.y)});\n`;
     });
     sql += '\n';
 
     connections.forEach(c => {
-      sql += `INSERT INTO connections (id, source_id, target_id, source_handle, target_handle, label, label_zh, color, line_style) VALUES ('${c.id}', '${c.sourceId}', '${c.targetId}', '${c.sourceHandle}', '${c.targetHandle}', '${c.label}', '${c.labelZh||''}', '${c.color||'#e5e7eb'}', '${c.lineStyle||'solid'}');\n`;
+      sql += `INSERT INTO "Connection" ("id", "sourceId", "targetId", "sourceHandle", "targetHandle", "label", "labelZh", "color", "lineStyle") VALUES ('${c.id}', '${c.sourceId}', '${c.targetId}', '${c.sourceHandle}', '${c.targetHandle}', '${c.label}', '${c.labelZh||''}', '${c.color||'#e5e7eb'}', '${c.lineStyle||'solid'}');\n`;
     });
 
     return sql;
